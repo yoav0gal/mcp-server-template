@@ -69,9 +69,9 @@
 	},
 	"homepage": "https://github.com/yoav0gal/mcp-server-template#readme",
 	"devDependencies": {
+		"@gerhobbelt/gitignore-parser": "^0.2.0-9",
 		"@types/bun": "latest",
-		"@types/node": "^20.17.24",
-		"conventional-changelog-cli": "^5.0.0"
+		"@types/node": "^20.17.24"
 	},
 	"peerDependencies": {
 		"effect": "^3.14.4",

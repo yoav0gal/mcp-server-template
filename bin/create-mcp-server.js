@@ -3,18 +3,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import readline from 'node:readline/promises'; // Using promises version for async/await
+import { stdin, stdout } from 'node:process';
+import { exec } from 'node:child_process'; // Added for Bun check
+import gitignore from '@gerhobbelt/gitignore-parser';
 
-// Get the directory where the source files are stored
+// Get the directory where the source files are stored (the template project root)
 const __filename = fileURLToPath(import.meta.url);
 const rootDir = path.join(path.dirname(__filename), '..');
-const sourceDir = path.join(rootDir, 'src');
-const targetDir = process.cwd();
-
-// Check if the target directory is empty
-const isDirectoryEmpty = () => {
-	const files = fs.readdirSync(targetDir);
-	return files.length === 0 || (files.length === 1 && files[0] === '.git');
-};
 
 // Print a colorful message
 const printColorMessage = (message, color) => {
@@ -31,171 +27,290 @@ const printColorMessage = (message, color) => {
 	console.log(`${colors[color]}${message}${colors.reset}`);
 };
 
+// Function to draw a colored box around a message
+const drawColorBox = (message, color) => {
+	const colors = {
+		red: '\x1b[31m',
+		green: '\x1b[32m',
+		yellow: '\x1b[33m',
+		blue: '\x1b[34m',
+		magenta: '\x1b[35m',
+		cyan: '\x1b[36m',
+		reset: '\x1b[0m',
+	};
+
+	const lines = message.split('\n');
+	const maxLength = Math.max(...lines.map((line) => line.length));
+	const horizontalLine = '─'.repeat(maxLength + 4);
+
+	console.log(`${colors[color]}┌${horizontalLine}┐${colors.reset}`);
+	for (const line of lines) {
+		console.log(
+			`${colors[color]}│  ${line.padEnd(maxLength)}  │${colors.reset}`,
+		);
+	}
+	console.log(`${colors[color]}└${horizontalLine}┘${colors.reset}`);
+};
+
+// Function to check if Bun is installed
+async function checkBunInstallation() {
+	return new Promise((resolve) => {
+		exec('bun --version', (error) => {
+			if (error) {
+				resolve(false); // Bun is not installed or not in PATH
+			} else {
+				resolve(true); // Bun is installed
+			}
+		});
+	});
+}
+
 // Main function
 async function main() {
 	console.log('\n');
 	printColorMessage('🚀 Creating a new MCP server project...', 'cyan');
 	console.log('\n');
 
-	// Check if the directory is empty
-	if (!isDirectoryEmpty()) {
-		printColorMessage('⚠️  The current directory is not empty!', 'yellow');
-		console.log(
-			'To avoid overwriting existing files, please run this command in an empty directory.',
-		);
-		console.log('You can create a new directory and run the command there:');
-		console.log(
-			'\n  mkdir my-mcp-server && cd my-mcp-server && npx @mcpdotdirect/create-mcp-server\n',
-		);
-		process.exit(1);
-	}
+	const rl = readline.createInterface({ input: stdin, output: stdout });
 
-	// Check if source directory exists
-	if (!fs.existsSync(sourceDir)) {
-		printColorMessage('⚠️  Source directory not found!', 'red');
-		console.log('This is likely an issue with the package installation.');
-		console.log(
-			'Please report this issue at: https://github.com/mcpdotdirect/create-mcp-server/issues',
-		);
-		process.exit(1);
-	}
+	let projectName;
+	let projectPath;
 
-	try {
-		// Copy source files to target directory
-		copyFiles(sourceDir, path.join(targetDir, 'src'));
+	while (true) {
+		printColorMessage('What is the name of your project? ', 'blue');
+		projectName = await rl.question(''); // Empty string as prompt, message already printed
 
-		// Copy other important files
-		const filesToCopy = ['.gitignore', 'tsconfig.json', 'README.md'];
-
-		for (const file of filesToCopy) {
-			const srcPath = path.join(rootDir, file);
-			const destPath = path.join(targetDir, file);
-
-			if (fs.existsSync(srcPath)) {
-				fs.copyFileSync(srcPath, destPath);
-				console.log(`📄 Created ${destPath}`);
-			}
+		if (!projectName || projectName.trim() === '') {
+			printColorMessage(
+				'Project name cannot be empty. Please try again.',
+				'yellow',
+			);
+			continue;
 		}
 
-		// Create a package.json for the new project
-		createProjectPackageJson();
+		// Basic validation for project name
+		if (!/^[a-zA-Z0-9_-]+$/.test(projectName)) {
+			printColorMessage(
+				'Invalid project name. Please use alphanumeric characters, hyphens, or underscores.',
+				'yellow',
+			);
+			continue;
+		}
 
-		printColorMessage('✅ Source files copied successfully!', 'green');
+		projectPath = path.join(process.cwd(), projectName);
 
-		printColorMessage('\n🎉 MCP server project created successfully!', 'green');
-		console.log('\nNext steps:');
-		console.log('  1. Install dependencies:');
-		console.log('     npm install');
-		console.log('     # or with yarn');
-		console.log('     yarn');
-		console.log('     # or with pnpm');
-		console.log('     pnpm install');
-		console.log('     # or with bun');
+		if (fs.existsSync(projectPath)) {
+			printColorMessage(
+				`A directory named '${projectName}' already exists. Please choose a different name.`,
+				'yellow',
+			);
+			continue;
+		}
+
+		break;
+	}
+
+	rl.close();
+
+	try {
+		fs.mkdirSync(projectPath, { recursive: true });
+		console.log(`📂 Created project directory: ${projectPath}`);
+
+		// Load .gitignore patterns from the template
+		const gitignorePath = path.join(rootDir, '.gitignore');
+		let gitignoreFilter;
+		if (fs.existsSync(gitignorePath)) {
+			const gitignoreContent = fs.readFileSync(gitignorePath, 'utf8');
+			gitignoreFilter = gitignore.compile(gitignoreContent);
+		} else {
+			// If .gitignore doesn't exist, create a dummy filter that accepts everything
+			gitignoreFilter = {
+				accepts: () => true,
+				denies: () => false,
+			};
+		}
+
+		copyProjectFiles(rootDir, projectPath, gitignoreFilter);
+
+		// Customize the copied package.json for the new project
+		customizeProjectPackageJson(projectPath, projectName);
+
+		printColorMessage('\n✅ Project created successfully!', 'green');
+		printColorMessage('\nNext steps:', 'cyan');
+		console.log('  1. Navigate to your project:');
+		console.log(`     cd ${projectName}`);
+		console.log('  2. Install dependencies:');
 		console.log('     bun install');
-		console.log('  2. Review the README.md file for usage instructions');
-		console.log('  3. Run "npm start" or "npm run dev" to start the server');
+		console.log('  3. Run "bun dev" to start the server');
 		console.log('\nHappy coding! 🚀\n');
+
+		// Check for Bun installation and provide a message if not found
+		const hasBun = await checkBunInstallation();
+		if (!hasBun) {
+			const bunMessage = `
+This project is configured to use Bun as its runtime and package manager.
+It appears Bun is not installed on your system.
+
+You can download Bun from: https://bun.sh/docs/installation
+
+Alternatively, you can reconfigure the project's scripts in package.json
+to use npm, yarn, or pnpm if you prefer.
+      `;
+			drawColorBox(bunMessage.trim(), 'yellow');
+		}
 	} catch (error) {
 		printColorMessage(
 			`\n❌ Error creating MCP server project: ${error.message}`,
 			'red',
 		);
-		console.log(
-			'Please report this issue at: https://github.com/mcpdotdirect/create-mcp-server/issues',
-		);
+		console.error(error);
 		process.exit(1);
 	}
 }
 
-// Function to copy files recursively
-function copyFiles(source, destination) {
-	// Create destination directory if it doesn't exist
-	if (!fs.existsSync(destination)) {
-		fs.mkdirSync(destination, { recursive: true });
-	}
+// Function to copy files recursively based on gitignore
+function copyProjectFiles(source, destination, gitignoreFilter) {
+	fs.mkdirSync(destination, { recursive: true });
 
-	// Read all files/folders in the source directory
 	const entries = fs.readdirSync(source, { withFileTypes: true });
+
+	// Exclude CLI's own internal files/directories that should never be copied
+	const cliExclusions = [
+		'bin',
+		'node_modules',
+		'build',
+		'.cursor',
+		'.git',
+		'.github',
+		'package-lock.json',
+		'yarn.lock',
+		'pnpm-lock.yaml',
+		'bun.lock',
+		'npm-debug.log',
+	];
 
 	for (const entry of entries) {
 		const srcPath = path.join(source, entry.name);
 		const destPath = path.join(destination, entry.name);
 
-		// Skip node_modules, package-lock.json, .git, and other unnecessary directories/files
-		// This ensures we don't copy any lock files or node_modules, letting the user generate their own
+		const relativePathFromRoot = path.relative(rootDir, srcPath);
+
 		if (
-			entry.name === 'node_modules' ||
-			entry.name === 'package-lock.json' ||
-			entry.name === 'npm-debug.log' ||
-			entry.name === 'yarn.lock' ||
-			entry.name === 'pnpm-lock.yaml' ||
-			entry.name === 'bun.lock' ||
-			entry.name === '.git' ||
-			entry.name === 'bin' ||
-			entry.name === '.cursor' ||
-			entry.name === 'LICENSE' ||
-			entry.name === 'build'
+			cliExclusions.some((exclusion) =>
+				relativePathFromRoot.startsWith(exclusion),
+			)
 		) {
 			continue;
 		}
 
+		const pathToCheckForGitignore = entry.isDirectory()
+			? `${relativePathFromRoot}/`
+			: relativePathFromRoot;
+
+		if (gitignoreFilter.denies(pathToCheckForGitignore)) {
+			continue;
+		}
+
 		if (entry.isDirectory()) {
-			// Recursively copy directories
-			copyFiles(srcPath, destPath);
+			copyProjectFiles(srcPath, destPath, gitignoreFilter);
 		} else {
-			// Copy files
 			fs.copyFileSync(srcPath, destPath);
-			console.log(`📄 Created ${destPath}`);
 		}
 	}
 }
 
-// Create a package.json for the new project
-function createProjectPackageJson() {
-	const packageJsonPath = path.join(targetDir, 'package.json');
+// Customize the copied package.json for the new project
+function customizeProjectPackageJson(targetPath, projectName) {
+	const packageJsonPath = path.join(targetPath, 'package.json');
 
-	const projectPackageJson = {
-		name: 'mcp-server',
-		module: 'src/index.ts',
-		type: 'module',
+	if (!fs.existsSync(packageJsonPath)) {
+		console.error(
+			'Error: package.json not found in the target directory after copying.',
+		);
+		return;
+	}
+
+	const packageJsonContent = fs.readFileSync(packageJsonPath, 'utf8');
+	const originalPackageJson = JSON.parse(packageJsonContent);
+
+	// Start with a base that includes desired fields and copies existing scripts, dependencies, and peerDependencies
+	const newProjectPackageJson = {
+		name: projectName,
 		version: '1.0.0',
-		description: 'Model Context Protocol (MCP) Server',
+		description:
+			'Model Context Protocol (MCP) Server created using create-mcp-server',
 		private: true,
-		scripts: {
-			start: 'bun run src/index.ts',
-			build: 'bun build src/index.ts --outdir build --target node',
-			'build:http':
-				'bun build src/server/http-server.ts --outdir build --target node',
-			dev: 'bun --watch src/index.ts',
-			'start:http': 'bun run src/server/http-server.ts',
-			'dev:http': 'bun --watch src/server/http-server.ts',
-		},
-		devDependencies: {
-			'@types/bun': 'latest',
-			'@types/cors': '^2.8.17',
-			'@types/node': '^20.11.0',
-		},
-		peerDependencies: {
-			typescript: '^5.8.2',
-			'@valibot/to-json-schema': '^1.0.0',
-			effect: '^3.14.4',
-		},
-		dependencies: {
-			fastmcp: '^1.21.0',
-			cors: '^2.8.5',
-			zod: '^3.24.2',
-		},
+		// Filter scripts to exclude CLI-specific ones
+		scripts: Object.fromEntries(
+			Object.entries(originalPackageJson.scripts || {}).filter(
+				([key]) =>
+					![
+						'prepublishOnly',
+						'version:patch',
+						'version:minor',
+						'version:major',
+						'release',
+					].includes(key),
+			),
+		),
+		// Filter dependencies to exclude 'cors'
+		dependencies: originalPackageJson.dependencies,
+		peerDependencies: originalPackageJson.peerDependencies || {},
+		// Initialize devDependencies and then modify it
+		devDependencies: {},
 	};
+
+	// Copy over original devDependencies, excluding @gerhobbelt/gitignore-parser and @types/cors
+	if (originalPackageJson.devDependencies) {
+		for (const [key, value] of Object.entries(
+			originalPackageJson.devDependencies,
+		)) {
+			if (key !== '@gerhobbelt/gitignore-parser' && key !== '@types/cors') {
+				newProjectPackageJson.devDependencies[key] = value;
+			}
+		}
+	}
+
+	// Add @biomejs/biome and ensure @types/bun, @types/node are present in devDependencies
+	newProjectPackageJson.devDependencies['@biomejs/biome'] = '^1.9.4';
+	newProjectPackageJson.devDependencies['@types/bun'] = 'latest';
+	newProjectPackageJson.devDependencies['@types/node'] = '^20.11.0';
+
+	// Ensure 'module' and 'type' fields are present if they exist in the original
+	if (originalPackageJson.module) {
+		newProjectPackageJson.module = originalPackageJson.module;
+	}
+	if (originalPackageJson.type) {
+		newProjectPackageJson.type = originalPackageJson.type;
+	}
+
+	// Remove CLI-specific top-level fields (these should not be in the generated project's package.json)
+	const cliSpecificFields = [
+		'bin',
+		'files',
+		'publishConfig',
+		'repository',
+		'keywords',
+		'author',
+		'homepage',
+	];
+
+	for (const field of cliSpecificFields) {
+		if (field in originalPackageJson) {
+			delete newProjectPackageJson[field];
+		}
+	}
 
 	fs.writeFileSync(
 		packageJsonPath,
-		JSON.stringify(projectPackageJson, null, 2),
+		JSON.stringify(newProjectPackageJson, null, 2),
 	);
-	console.log(`📄 Created ${packageJsonPath}`);
+	console.log(`📄 Customized ${packageJsonPath}`);
 }
 
 // Run the main function
 main().catch((error) => {
 	printColorMessage(`\n❌ Unexpected error: ${error.message}`, 'red');
+	console.error(error);
 	process.exit(1);
 });
