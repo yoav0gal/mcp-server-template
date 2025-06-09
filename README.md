@@ -2,7 +2,6 @@
 
 <div style="display: flex; align-items: center; margin-bottom: 2rem; gap: 1rem; justify-content: center;">
   <img src="readme-logos/typescript.svg" width="128" height="128" alt="TypeScript Logo" />
-  <div style="width: 10px;"></div>
   <img src="readme-logos/model-context-protocol.svg" width="128" height="128" alt="Model Context Protocol Logo" />
 </div>
 
