@@ -27,7 +27,7 @@
 	"scripts": {
 		"start": "bun run src/index.ts",
 		"build": "bun build src/index.ts --outdir build --target bun --external sury",
-		"build:http": "bun build src/server/http-server.ts --outdir build --target bun --outfile http-server.js --external sury",
+		"build:http": "bun run build src/server/http-server.ts --outdir build --target bun --outfile http-server.js --external sury",
 		"dev": "bun --watch src/index.ts",
 		"start:http": "bun run src/server/http-server.ts",
 		"dev:http": "bun --watch src/server/http-server.ts",
@@ -40,7 +40,7 @@
 		"version:major": "npm version major",
 		"release": "npm publish",
 		"docker:build": "docker build -t typescript-mcp-server-template .",
-   		"docker:run":  "docker run --name typescript-mcp-server-template -p ${PORT:-3000}:${PORT:-3000} --env-file .env --env PORT=${PORT:-3000} typescript-mcp-server-template",
+   		"docker:run":  "docker run --name typescript-mcp-server-template -p ${PORT:-3697}:${PORT:-3697} --env-file .env --env PORT=${PORT:-3697} typescript-mcp-server-template",
     	"docker:stop": "docker stop typescript-mcp-server-template"
 	},
 	"repository": {

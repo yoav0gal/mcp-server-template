@@ -1,6 +1,6 @@
 import startServer from './server';
 
-const PORT = Number.parseInt(process.env.PORT || '3001', 10);
+const PORT = Number.parseInt(process.env.PORT || '3697', 10);
 
 async function main() {
 	try {
