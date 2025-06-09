@@ -179,6 +179,7 @@ function copyProjectFiles(source, destination, gitignoreFilter) {
 		'bin',
 		'node_modules',
 		'build',
+		'readme-logos',
 		'.cursor',
 		'.git',
 		'.github',
