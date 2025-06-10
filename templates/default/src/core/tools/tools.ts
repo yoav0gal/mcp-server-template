@@ -1,5 +1,6 @@
 import type { FastMCP } from 'fastmcp';
-import { goodbyeTool, helloWorldTool } from './tool-example';
+import { helloWorldTool } from './hello-world-tool';
+import { goodbyeTool } from './goodbye-tool';
 
 /**
  * Register all tools with the MCP server

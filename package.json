@@ -1,6 +1,6 @@
 {
 	"name": "mcp-create",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "CLI tool to create a new MCP (Model Context Protocol) server project, using fastmcp",
 	"type": "module",
 	"author": "Yoav Gal (yoav0gal@gmail.com)",
