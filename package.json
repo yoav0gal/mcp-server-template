@@ -1,16 +1,24 @@
 {
-	"name": "create-mcp-server",
+	"name": "mcp-create",
 	"version": "1.0.0",
 	"description": "CLI tool to create a new MCP (Model Context Protocol) server project, using fastmcp",
-	"type": "module",	
+	"type": "module",
 	"author": "Yoav Gal (yoav0gal@gmail.com)",
 	"license": "MIT",
 	"publishConfig": {
 		"access": "public"
 	},
 	"bin": {
-		"create-mcp-server": "./create-mcp-server-cli/index.mjs"
+		"mcp-create": "./create-mcp-server-cli/index.mjs"
 	},
+	"files": [
+		"create-mcp-server-cli/",
+		"templates/",
+		"LICENSE",
+		"package.json",
+		"README.md",
+		"readme-logos/"
+	],
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/yoav0gal/mcp-server-template.git"

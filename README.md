@@ -11,7 +11,19 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ---
 
+
 This repository provides an opinionated starter template for building a TypeScript-based MCP (Model Context Protocol) server. It's designed to give you a quick and robust foundation for your agent-powered applications. ✨
+
+### 🚀 Quick Start
+
+```bash
+bunx mcp-create my-mcp-server
+cd my-mcp-server
+bun install
+bun dev # For stdio Transport
+# OR
+bun dev:http # For streamable Http Transport
+```
 
 ## ⚡ Powered by [FastMCP](https://github.com/punkpeye/fastmcp)
 
@@ -31,42 +43,6 @@ This template follows a clear and modular architecture, making it easy to extend
 -   **`docs/`**: Important documentation for both human and AI agents, including `ARCHITECTURE.md` and `AGENT_RULES.md`.
 
 For a more detailed breakdown, refer to `docs/ARCHITECTURE.md`. 📖
-
-## 🏁 Getting Started
-
-Follow these simple steps to get your MCP server up and running:
-
-1.  **Clone the repository:**
-    ```bash
-    git clone <your-repo-url>
-    cd <your-repo-name>
-    ```
-
-2.  **Install dependencies:**
-    This project uses `bun` as the preferred package manager and runtime. Make sure you have Bun installed.
-    ```bash
-    bun install
-    ```
-
-3.  **Start the server:**
-    You can run the server in two modes:
-
-    -   **stdio Transport**
-        ```bash
-        bun dev
-        ```
-
-    -   **Streamable Http Transport:**. <br> By default, it runs on port 3697.
-        ```bash
-        bun start:http
-
-        # Or for development 
-        bun dev:http
-        
-        # To change the port (e.g., to 8080):
-        PORT=8080 bun run start:http
-        ```
-
 
 ## 🐳 Running in Docker
 

@@ -20,8 +20,8 @@ async function startServer() {
 		registerTools(server);
 		registerPrompts(server);
 
-		console.error('MCP Server initialized');
-		console.error('Server is ready to handle requests');
+		console.log('MCP Server initialized');
+		console.log('Server is ready to handle requests');
 
 		return server;
 	} catch (error) {

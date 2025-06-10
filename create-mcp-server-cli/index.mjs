@@ -67,85 +67,137 @@ async function checkBunInstallation() {
 // Main function
 async function main() {
 	console.log('\n');
-	printColorMessage('🚀 Creating a new MCP server project...', 'cyan');
+	printColorMessage('✨ Welcome to the MCP Server Project Creator! ✨', 'magenta');
+	printColorMessage('🚀 Let\'s get your new project set up!', 'cyan');
 	console.log('\n');
 
-	const rl = readline.createInterface({ input: stdin, output: stdout });
-
 	let projectName;
-	let projectPath;
+	let projectPath; // This will be set after projectName is determined
 
-	while (true) {
-		printColorMessage('What is the name of your project? ', 'blue');
-		projectName = await rl.question(''); // Empty string as prompt, message already printed
+	// Check if project name is provided as a command-line argument
+	const args = process.argv.slice(2); // Skip 'node' and 'index.mjs'
 
+	if (args.length > 0) {
+		projectName = args[0];
+		printColorMessage(`Using project name from arguments: ${projectName}`, 'blue');
+		// Perform validation for the provided project name directly
 		if (!projectName || projectName.trim() === '') {
 			printColorMessage(
-				'Project name cannot be empty. Please try again.',
-				'yellow',
+				'⚠️ Project name cannot be empty. Please provide a valid name.',
+				'red',
 			);
-			continue;
+			process.exit(1);
 		}
-
-		// Basic validation for project name
 		if (!/^[a-zA-Z0-9_-]+$/.test(projectName)) {
 			printColorMessage(
-				'Invalid project name. Please use alphanumeric characters, hyphens, or underscores.',
-				'yellow',
+				'🚫 Invalid project name. Please use alphanumeric characters, hyphens, or underscores.',
+				'red',
 			);
-			continue;
+			process.exit(1);
 		}
-
 		projectPath = path.join(process.cwd(), projectName);
-
 		if (fs.existsSync(projectPath)) {
 			printColorMessage(
-				`A directory named '${projectName}' already exists. Please choose a different name.`,
-				'yellow',
+				`🛑 A directory named '${projectName}' already exists here. Please choose a different name.`, 
+				'red',
 			);
-			continue;
+			process.exit(1);
 		}
 
-		break;
+	} else {
+		const rl = readline.createInterface({ input: stdin, output: stdout });
+		while (true) {
+			printColorMessage('❓ What is the name of your new project? ', 'blue');
+			projectName = await rl.question(''); // Empty string as prompt, message already printed
+
+			if (!projectName || projectName.trim() === '') {
+				printColorMessage(
+					'⚠️ Project name cannot be empty. Please try again.',
+					'yellow',
+				);
+				continue;
+			}
+
+			// Basic validation for project name
+			if (!/^[a-zA-Z0-9_-]+$/.test(projectName)) {
+				printColorMessage(
+					'🚫 Invalid project name. Please use alphanumeric characters, hyphens, or underscores.',
+					'yellow',
+				);
+				continue;
+			}
+
+			projectPath = path.join(process.cwd(), projectName);
+
+			if (fs.existsSync(projectPath)) {
+				printColorMessage(
+					`🛑 A directory named '${projectName}' already exists here. Please choose a different name.`,
+					'yellow',
+				);
+				continue;
+			}
+
+			break;
+		}
+		rl.close(); // Close readline only if it was used
 	}
 
-	rl.close();
+	// Now that projectName is determined, set projectPath if not already set (for direct argument case)
+	// If projectName was provided via arguments, projectPath is already set and validated above.
+	// If prompted, projectPath is also set and validated inside the loop.
+	// This line is redundant if validation always sets projectPath, but harmless.
+	if (!projectPath) {
+		projectPath = path.join(process.cwd(), projectName);
+	}
 
 	try {
+		printColorMessage(`Creating project directory: ${projectPath}`, 'blue');
 		fs.mkdirSync(projectPath, { recursive: true });
-		console.log(`📂 Created project directory: ${projectPath}`);
+		console.log(`✅ Project directory created!`);
 
+		printColorMessage('Copying template files...', 'blue');
 		copyProjectFiles(path.join(rootDir, 'templates', 'default'), projectPath);
+		console.log('✅ Template files copied!');
 
+		printColorMessage('Customizing package.json...', 'blue');
 		// Customize the copied package.json for the new project
 		customizeProjectPackageJson(projectPath, projectName);
+		console.log('✅ package.json customized!');
 
-		printColorMessage('\n✅ Project created successfully!', 'green');
+		printColorMessage('\n🎉 Project created successfully!', 'green');
 		printColorMessage('\nNext steps:', 'cyan');
-		console.log('  1. Navigate to your project:');
-		console.log(`     cd ${projectName}`);
-		console.log('  2. Install dependencies:');
-		console.log('     bun install');
-		console.log('  3. Run "bun dev" to start the server');
-		console.log('\nHappy coding! 🚀\n');
+		const nextStepsMessage = `
+  1. 📁 Navigate into your new project folder:
+     \`cd ${projectName}\`
+
+  2. 📦 Install dependencies:
+     \`bun install\`
+
+  3. 🚀 Start the development server:
+     \`bun dev\`
+
+Happy coding! 🎉
+`;
+		drawColorBox(nextStepsMessage.trim(), 'cyan');
 
 		// Check for Bun installation and provide a message if not found
 		const hasBun = await checkBunInstallation();
 		if (!hasBun) {
 			const bunMessage = `
-This project is configured to use Bun as its runtime and package manager.
-It appears Bun is not installed on your system.
+--- ℹ️ IMPORTANT: Bun Not Found ---
+This project is optimized for Bun! It appears Bun is not installed on your system.
 
 You can download Bun from: https://bun.sh/docs/installation
 
 Alternatively, you can reconfigure the project's scripts in package.json
 to use npm, yarn, or pnpm if you prefer.
+----------------------------------
       `;
 			drawColorBox(bunMessage.trim(), 'yellow');
 		}
 	} catch (error) {
 		printColorMessage(
-			`\n❌ Error creating MCP server project: ${error.message}`,
+			`\n❌ Oh no! An error occurred: ${error.message}`,
 			'red',
 		);
 		console.error(error);
@@ -177,7 +229,7 @@ function customizeProjectPackageJson(targetPath, projectName) {
 
 	if (!fs.existsSync(packageJsonPath)) {
 		console.error(
-			'Error: package.json not found in the target directory after copying.',
+			'❌ Error: package.json not found in the target directory after copying.',
 		);
 		return;
 	}
@@ -207,12 +259,12 @@ function customizeProjectPackageJson(targetPath, projectName) {
 		packageJsonPath,
 		JSON.stringify(originalPackageJson, null, 2),
 	);
-	console.log(`📄 Customized ${packageJsonPath}`);
+	printColorMessage(`📄 Updated ${packageJsonPath}`, 'blue');
 }
 
 // Run the main function
 main().catch((error) => {
-	printColorMessage(`\n❌ Unexpected error: ${error.message}`, 'red');
+	printColorMessage(`\n💥 An unexpected error occurred: ${error.message}`, 'red');
 	console.error(error);
 	process.exit(1);
 });
