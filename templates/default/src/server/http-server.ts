@@ -15,7 +15,7 @@ async function main() {
 
 		console.log(`MCP Server running at http://localhost:${PORT}`);
 		console.log(`SSE endpoint: http://localhost:${PORT}/sse`);
-		console.log(`SSE endpoint: http://localhost:${PORT}/mcp`);
+		console.log(`Streamable HTTP endpoint: http://localhost:${PORT}/mcp`);
 	} catch (error) {
 		console.error('Failed to start server:', error);
 		process.exit(1);

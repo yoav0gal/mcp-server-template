@@ -6,7 +6,6 @@ import { fileURLToPath } from 'node:url';
 import readline from 'node:readline/promises'; // Using promises version for async/await
 import { stdin, stdout } from 'node:process';
 import { exec } from 'node:child_process'; // Added for Bun check
-import gitignore from '@gerhobbelt/gitignore-parser';
 
 // Get the directory where the source files are stored (the template project root)
 const __filename = fileURLToPath(import.meta.url);
@@ -116,21 +115,7 @@ async function main() {
 		fs.mkdirSync(projectPath, { recursive: true });
 		console.log(`📂 Created project directory: ${projectPath}`);
 
-		// Load .gitignore patterns from the template
-		const gitignorePath = path.join(rootDir, '.gitignore');
-		let gitignoreFilter;
-		if (fs.existsSync(gitignorePath)) {
-			const gitignoreContent = fs.readFileSync(gitignorePath, 'utf8');
-			gitignoreFilter = gitignore.compile(gitignoreContent);
-		} else {
-			// If .gitignore doesn't exist, create a dummy filter that accepts everything
-			gitignoreFilter = {
-				accepts: () => true,
-				denies: () => false,
-			};
-		}
-
-		copyProjectFiles(rootDir, projectPath, gitignoreFilter);
+		copyProjectFiles(path.join(rootDir, 'templates', 'default'), projectPath);
 
 		// Customize the copied package.json for the new project
 		customizeProjectPackageJson(projectPath, projectName);
@@ -168,52 +153,18 @@ to use npm, yarn, or pnpm if you prefer.
 	}
 }
 
-// Function to copy files recursively based on gitignore
-function copyProjectFiles(source, destination, gitignoreFilter) {
+// Function to copy files recursively
+function copyProjectFiles(source, destination) {
 	fs.mkdirSync(destination, { recursive: true });
 
 	const entries = fs.readdirSync(source, { withFileTypes: true });
-
-	// Exclude CLI's own internal files/directories that should never be copied
-	const cliExclusions = [
-		'bin',
-		'node_modules',
-		'build',
-		'readme-logos',
-		'.cursor',
-		'.git',
-		'.github',
-		'package-lock.json',
-		'yarn.lock',
-		'pnpm-lock.yaml',
-		'bun.lock',
-		'npm-debug.log',
-	];
 
 	for (const entry of entries) {
 		const srcPath = path.join(source, entry.name);
 		const destPath = path.join(destination, entry.name);
 
-		const relativePathFromRoot = path.relative(rootDir, srcPath);
-
-		if (
-			cliExclusions.some((exclusion) =>
-				relativePathFromRoot.startsWith(exclusion),
-			)
-		) {
-			continue;
-		}
-
-		const pathToCheckForGitignore = entry.isDirectory()
-			? `${relativePathFromRoot}/`
-			: relativePathFromRoot;
-
-		if (gitignoreFilter.denies(pathToCheckForGitignore)) {
-			continue;
-		}
-
 		if (entry.isDirectory()) {
-			copyProjectFiles(srcPath, destPath, gitignoreFilter);
+			copyProjectFiles(srcPath, destPath);
 		} else {
 			fs.copyFileSync(srcPath, destPath);
 		}
@@ -234,77 +185,27 @@ function customizeProjectPackageJson(targetPath, projectName) {
 	const packageJsonContent = fs.readFileSync(packageJsonPath, 'utf8');
 	const originalPackageJson = JSON.parse(packageJsonContent);
 
-	// Start with a base that includes desired fields and copies existing scripts, dependencies, and peerDependencies
-	const newProjectPackageJson = {
-		name: projectName,
-		version: '1.0.0',
-		description:
-			'Model Context Protocol (MCP) Server created using create-mcp-server',
-		private: true,
-		// Filter scripts to exclude CLI-specific ones
-		scripts: Object.fromEntries(
-			Object.entries(originalPackageJson.scripts || {}).filter(
-				([key]) =>
-					![
-						'prepublishOnly',
-						'version:patch',
-						'version:minor',
-						'version:major',
-						'release',
-					].includes(key),
-			),
-		),
-		// Filter dependencies to exclude 'cors'
-		dependencies: originalPackageJson.dependencies,
-		peerDependencies: originalPackageJson.peerDependencies || {},
-		// Initialize devDependencies and then modify it
-		devDependencies: {},
-	};
+	// Update the project name
+	originalPackageJson.name = projectName;
 
-	// Copy over original devDependencies, excluding @gerhobbelt/gitignore-parser and @types/cors
-	if (originalPackageJson.devDependencies) {
-		for (const [key, value] of Object.entries(
-			originalPackageJson.devDependencies,
-		)) {
-			if (key !== '@gerhobbelt/gitignore-parser' && key !== '@types/cors') {
-				newProjectPackageJson.devDependencies[key] = value;
-			}
+	// Update docker command names
+	if (originalPackageJson.scripts) {
+		if (originalPackageJson.scripts['docker:build']) {
+			originalPackageJson.scripts['docker:build'] =
+				`docker build -t ${projectName} .`;
 		}
-	}
-
-	// Add @biomejs/biome and ensure @types/bun, @types/node are present in devDependencies
-	newProjectPackageJson.devDependencies['@biomejs/biome'] = '^1.9.4';
-	newProjectPackageJson.devDependencies['@types/bun'] = 'latest';
-	newProjectPackageJson.devDependencies['@types/node'] = '^20.11.0';
-
-	// Ensure 'module' and 'type' fields are present if they exist in the original
-	if (originalPackageJson.module) {
-		newProjectPackageJson.module = originalPackageJson.module;
-	}
-	if (originalPackageJson.type) {
-		newProjectPackageJson.type = originalPackageJson.type;
-	}
-
-	// Remove CLI-specific top-level fields (these should not be in the generated project's package.json)
-	const cliSpecificFields = [
-		'bin',
-		'files',
-		'publishConfig',
-		'repository',
-		'keywords',
-		'author',
-		'homepage',
-	];
-
-	for (const field of cliSpecificFields) {
-		if (field in originalPackageJson) {
-			delete newProjectPackageJson[field];
+		if (originalPackageJson.scripts['docker:run']) {
+			originalPackageJson.scripts['docker:run'] =
+				`docker run --name ${projectName} -p \${PORT:-3697}:\${PORT:-3697} --env-file .env.local --env PORT=\${PORT:-3697} ${projectName}`;
+		}
+		if (originalPackageJson.scripts['docker:stop']) {
+			originalPackageJson.scripts['docker:stop'] = `docker stop ${projectName}`;
 		}
 	}
 
 	fs.writeFileSync(
 		packageJsonPath,
-		JSON.stringify(newProjectPackageJson, null, 2),
+		JSON.stringify(originalPackageJson, null, 2),
 	);
 	console.log(`📄 Customized ${packageJsonPath}`);
 }

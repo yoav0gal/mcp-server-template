@@ -1,86 +1,37 @@
 {
 	"name": "create-mcp-server",
-	"module": "src/index.ts",
-	"type": "module",
 	"version": "1.0.0",
 	"description": "CLI tool to create a new MCP (Model Context Protocol) server project, using fastmcp",
-	"private": false,
-	"main": "build/index.js",
-	"bin": {
-		"mcp-create": "./bin/create-mcp-server.js"
+	"type": "module",	
+	"author": "Yoav Gal (yoav0gal@gmail.com)",
+	"license": "MIT",
+	"publishConfig": {
+		"access": "public"
 	},
-	"files": [
-		"bin",
-		"src/",
-		"tests/",
-		"docs/",
-		"build/",
-		"Dockerfile",
-		"dockerignore",
-		".env.example",
-		"biome.json",
-		".gitignore",
-		"tsconfig.json",
-		"README.md",
-		"LICENSE"
-	],
-	"scripts": {
-		"start": "bun run src/index.ts",
-		"build": "bun build src/index.ts --outdir build --target bun --external sury",
-		"build:http": "bun run build src/server/http-server.ts --outdir build --target bun --outfile http-server.js --external sury",
-		"dev": "bun --watch src/index.ts",
-		"start:http": "bun run src/server/http-server.ts",
-		"dev:http": "bun --watch src/server/http-server.ts",
-		"test": "bun test",
-		"format": "biome format --write ./src",
-		"lint": "biome lint ./src",
-		"prepublishOnly": "bun run build && bun run build:http",
-		"version:patch": "npm version patch",
-		"version:minor": "npm version minor",
-		"version:major": "npm version major",
-		"release": "npm publish",
-		"docker:build": "docker build -t typescript-mcp-server-template .",
-   		"docker:run":  "docker run --name typescript-mcp-server-template -p ${PORT:-3697}:${PORT:-3697} --env-file .env --env PORT=${PORT:-3697} typescript-mcp-server-template",
-    	"docker:stop": "docker stop typescript-mcp-server-template"
+	"bin": {
+		"create-mcp-server": "./create-mcp-server-cli/index.mjs"
 	},
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/yoav0gal/mcp-server-template.git"
 	},
-	"publishConfig": {
-		"access": "public"
+	"bugs": {
+		"url": "https://github.com/yoav0gal/mcp-server-template/issues"
 	},
+	"homepage": "https://github.com/yoav0gal/mcp-server-template#readme",
 	"keywords": [
 		"mcp",
 		"model-context-protocol",
 		"template",
 		"server",
 		"ai",
+		"cli",
 		"agent",
 		"create",
 		"generator",
 		"starter",
 		"boilerplate"
 	],
-	"author": "Yoav Gal",
-	"license": "MIT",
-	"bugs": {
-		"url": "https://github.com/yoav0gal/mcp-server-template/issues"
-	},
-	"homepage": "https://github.com/yoav0gal/mcp-server-template#readme",
-	"devDependencies": {
-		"@gerhobbelt/gitignore-parser": "^0.2.0-9",
-		"@types/bun": "latest",
-		"@types/node": "^20.17.24"
-	},
-	"peerDependencies": {
-		"effect": "^3.14.4",
-		"typescript": "^5.8.2"
-	},
-	"dependencies": {
-		"fastmcp": "^3.0.0",
-		"zod": "^3.24.2"
-	},
 	"engines": {
 		"node": ">=18.0.0"
 	}
